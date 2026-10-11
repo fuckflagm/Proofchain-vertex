@@ -21,7 +21,7 @@ const MIME_TYPES = {
 
 const server = http.createServer((req, res) => {
   let reqPath = decodeURI(req.url.split('?')[0]);
-  if (reqPath === '/') reqPath = '/ui/index.html';
+  if (reqPath === '/') reqPath = '/ui/login.html';
 
   let filePath = path.join(ROOT, reqPath);
 
@@ -53,5 +53,5 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, () => {
   console.log(`ProofChain dev server running at http://localhost:${PORT}/`);
-  console.log(`UI accessible at http://localhost:${PORT}/ui/index.html`);
+  console.log(`UI accessible at http://localhost:${PORT}/ui/login.html`);
 });

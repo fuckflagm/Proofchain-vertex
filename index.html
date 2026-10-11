@@ -4,14 +4,7 @@
   <meta charset="UTF-8">
   <title>ProofChain</title>
   <script>
-    (function() {
-      const session = localStorage.getItem('proofchain_session');
-      if (session) {
-        window.location.replace('ui/index.html');
-      } else {
-        window.location.replace('ui/login.html');
-      }
-    })();
+    window.location.replace('ui/login.html');
   </script>
 </head>
 <body>

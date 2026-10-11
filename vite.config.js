@@ -19,6 +19,6 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    open: '/ui/index.html'
+    open: '/ui/login.html'
   }
 });
