@@ -13,7 +13,10 @@ export default defineConfig({
         register: resolve(import.meta.dirname, 'ui/register.html'),
         batches: resolve(import.meta.dirname, 'ui/batches.html'),
         verify: resolve(import.meta.dirname, 'ui/verify.html'),
-        audit: resolve(import.meta.dirname, 'ui/audit.html')
+        audit: resolve(import.meta.dirname, 'ui/audit.html'),
+        holderDashboard: resolve(import.meta.dirname, 'ui/holder-dashboard.html'),
+        issuerDashboard: resolve(import.meta.dirname, 'ui/issuer-dashboard.html'),
+        verifierMailbox: resolve(import.meta.dirname, 'ui/verifier-mailbox.html')
       }
     }
   },

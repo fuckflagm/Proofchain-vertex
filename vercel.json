@@ -18,6 +18,18 @@
       }
     },
     {
+      "source": "/login",
+      "destination": {
+        "service": "proofchain"
+      }
+    },
+    {
+      "source": "/verify",
+      "destination": {
+        "service": "proofchain"
+      }
+    },
+    {
       "source": "/(.*)",
       "destination": {
         "service": "app"
