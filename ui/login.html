@@ -983,20 +983,35 @@
     (function () {
       'use strict';
 
+      // Backend base URL — injected at build time by Vite via env var VITE_API_URL.
+      // In local dev (no env set) it defaults to '' (same origin via vite proxy or dev-server).
+      const API = (typeof import_meta_env !== 'undefined' && import_meta_env.VITE_API_URL)
+        ? import_meta_env.VITE_API_URL.replace(/\/$/, '')
+        : (window.PROOFCHAIN_API_URL || '').replace(/\/$/, '');
+
+      // Map FastAPI roles to local dashboard pages
+      const ROLE_PAGE = {
+        registrar: 'issuer-dashboard.html',
+        admin:     'issuer-dashboard.html',
+        candidate: 'holder-dashboard.html',
+        verifier:  'verifier-mailbox.html',
+        auditor:   'audit.html',
+      };
+
       const ROLES = {
         holder: {
-          identLabel: 'Email address',
-          identPlaceholder: 'holder@proofchain.org or ID-XXXXX',
+          identLabel: 'Username (e.g. candidate)',
+          identPlaceholder: 'candidate / meera',
           target: 'holder-dashboard.html',
         },
         issuer: {
-          identLabel: 'Operator ID / Service Email',
-          identPlaceholder: 'operator@proofchain.org',
+          identLabel: 'Username (e.g. Atharva)',
+          identPlaceholder: 'Atharva / registrar',
           target: 'issuer-dashboard.html',
         },
         verifier: {
-          identLabel: 'Auditor Email / Organization',
-          identPlaceholder: 'auditor@firm.org',
+          identLabel: 'Username (e.g. verifier)',
+          identPlaceholder: 'verifier / recruiter',
           target: 'verifier-mailbox.html',
         },
       };
@@ -1057,19 +1072,18 @@
       });
 
       forgotBtn.addEventListener('click', () => {
-        alert('Passkeys are cryptographically anchored. Please contact your ProofChain registry administrator or operator to re-issue credentials.');
+        alert('Demo accounts: candidate/1234  •  Atharva/1234  •  verifier/1234  •  meera/1234  •  recruiter/1234');
       });
 
-      loginForm.addEventListener('submit', e => {
+      loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         errorBox.classList.remove('show');
 
-        const cfg   = ROLES[active];
         const ident = identInput.value.trim();
         const pw    = pwInput.value;
 
         if (!ident) {
-          errorBox.textContent = cfg.identLabel + ' is required.';
+          errorBox.textContent = ROLES[active].identLabel + ' is required.';
           errorBox.classList.add('show');
           identInput.focus();
           return;
@@ -1082,22 +1096,52 @@
         }
 
         submitBtn.disabled = true;
-        statusBox.textContent = 'Verifying cryptographic passkey...';
+        statusBox.textContent = 'Authenticating with registry…';
         statusBox.classList.add('show');
 
-        setTimeout(() => {
+        try {
+          const fd = new FormData();
+          fd.append('username', ident);
+          fd.append('password', pw);
+
+          const res = await fetch(API + '/api/auth/login', {
+            method: 'POST',
+            body: fd,
+            credentials: 'include',   // send/receive cross-origin cookies
+          });
+
+          const data = await res.json();
+
+          if (!res.ok) {
+            throw new Error(data.detail || 'Authentication failed');
+          }
+
+          // Persist session info for other pages
           const session = {
-            role: active,
-            identifier: ident,
+            role: data.user.role,
+            username: data.user.username,
+            display_name: data.user.display_name,
+            person: data.user.person,
+            token: data.token,
             authenticated_at: new Date().toISOString(),
-            session_id: Array.from(crypto.getRandomValues(new Uint8Array(6)))
-                          .map(b => b.toString(16).padStart(2,'0')).join(''),
           };
           const store = rememberCk.checked ? localStorage : sessionStorage;
           store.setItem('proofchain_session', JSON.stringify(session));
-          statusBox.textContent = 'Authenticated. Redirecting...';
-          setTimeout(() => { window.location.href = cfg.target; }, 300);
-        }, 220);
+          // Also store API base URL so other pages can use it
+          store.setItem('proofchain_api_url', API);
+
+          statusBox.textContent = 'Authenticated. Redirecting…';
+
+          // Route to the correct dashboard based on actual backend role
+          const page = ROLE_PAGE[data.user.role] || ROLES[active].target;
+          setTimeout(() => { window.location.href = page; }, 300);
+
+        } catch (err) {
+          errorBox.textContent = err.message;
+          errorBox.classList.add('show');
+          statusBox.classList.remove('show');
+          submitBtn.disabled = false;
+        }
       });
 
       applyRole('holder');

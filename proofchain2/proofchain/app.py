@@ -10,6 +10,7 @@ import json, os, re, secrets, shutil, sqlite3, time, urllib.request, uuid
 from pathlib import Path
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.middleware.cors import CORSMiddleware
 
 import verify as verifier                    # the standalone verifier, reused unchanged
 from proofchain import core
@@ -22,6 +23,19 @@ LOG_MIRROR = MIRROR    / "roots.log"
 FILES  = DATA / "files"
 SAMPLES = Path(__file__).parent / "samples"
 app = FastAPI(title="ProofChain")
+
+# CORS — allow the Vercel frontend to make credentialed requests.
+# Set ALLOWED_ORIGINS env var to your Vercel deployment URL (e.g. https://proofchain-vertex.vercel.app).
+# Multiple origins can be comma-separated. Falls back to allow all origins in dev.
+_raw_origins = os.environ.get("ALLOWED_ORIGINS", "*")
+_allow_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_allow_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 DEFAULT_CANDIDATE = "Aarav Kulkarni"
 STAFF_ROLES = {"registrar", "admin"}                    # issue documents; may always open any file/proof
@@ -290,7 +304,14 @@ async def api_auth_login(username: str = Form(...), password: str = Form("")):
     token = uuid.uuid4().hex
     SESSIONS[token] = public_user(u)
     resp = JSONResponse({"ok": True, "user": SESSIONS[token], "token": token})
-    resp.set_cookie("proofchain_session", token, httponly=True, samesite="lax")
+    # SameSite=none + Secure required for cross-origin (Vercel FE -> Render BE) cookie.
+    is_cross_origin = bool(os.environ.get("ALLOWED_ORIGINS"))
+    resp.set_cookie(
+        "proofchain_session", token,
+        httponly=True,
+        samesite="none" if is_cross_origin else "lax",
+        secure=is_cross_origin,
+    )
     return resp
 
 
@@ -305,7 +326,12 @@ def api_auth_logout(request: Request):
     if token in SESSIONS:
         del SESSIONS[token]
     resp = JSONResponse({"ok": True})
-    resp.delete_cookie("proofchain_session")
+    is_cross_origin = bool(os.environ.get("ALLOWED_ORIGINS"))
+    resp.delete_cookie(
+        "proofchain_session",
+        samesite="none" if is_cross_origin else "lax",
+        secure=is_cross_origin,
+    )
     return resp
 
 
