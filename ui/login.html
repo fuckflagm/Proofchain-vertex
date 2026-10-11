@@ -983,20 +983,37 @@
     (function () {
       'use strict';
 
+      // Backend base URL — configurable via ?api=, localStorage, window.PROOFCHAIN_API_URL, or relative
+      const urlParams = new URLSearchParams(window.location.search);
+      const queryApi = urlParams.get('api');
+      if (queryApi) {
+        localStorage.setItem('proofchain_api_url', queryApi.replace(/\/$/, ''));
+      }
+      const API = (queryApi || localStorage.getItem('proofchain_api_url') || window.PROOFCHAIN_API_URL || '').replace(/\/$/, '');
+
+      // Map FastAPI roles to local dashboard pages
+      const ROLE_PAGE = {
+        registrar: 'issuer-dashboard.html',
+        admin:     'issuer-dashboard.html',
+        candidate: 'holder-dashboard.html',
+        verifier:  'verifier-mailbox.html',
+        auditor:   'audit.html',
+      };
+
       const ROLES = {
         holder: {
-          identLabel: 'Email address',
-          identPlaceholder: 'holder@proofchain.org or ID-XXXXX',
+          identLabel: 'Username (e.g. candidate)',
+          identPlaceholder: 'candidate / meera',
           target: 'holder-dashboard.html',
         },
         issuer: {
-          identLabel: 'Operator ID / Service Email',
-          identPlaceholder: 'operator@proofchain.org',
+          identLabel: 'Username (e.g. Atharva)',
+          identPlaceholder: 'Atharva / registrar',
           target: 'issuer-dashboard.html',
         },
         verifier: {
-          identLabel: 'Auditor Email / Organization',
-          identPlaceholder: 'auditor@firm.org',
+          identLabel: 'Username (e.g. verifier)',
+          identPlaceholder: 'verifier / recruiter',
           target: 'verifier-mailbox.html',
         },
       };
@@ -1057,19 +1074,18 @@
       });
 
       forgotBtn.addEventListener('click', () => {
-        alert('Passkeys are cryptographically anchored. Please contact your ProofChain registry administrator or operator to re-issue credentials.');
+        alert('Demo accounts: candidate/1234  •  Atharva/1234  •  verifier/1234  •  meera/1234  •  recruiter/1234');
       });
 
-      loginForm.addEventListener('submit', e => {
+      loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         errorBox.classList.remove('show');
 
-        const cfg   = ROLES[active];
         const ident = identInput.value.trim();
         const pw    = pwInput.value;
 
         if (!ident) {
-          errorBox.textContent = cfg.identLabel + ' is required.';
+          errorBox.textContent = ROLES[active].identLabel + ' is required.';
           errorBox.classList.add('show');
           identInput.focus();
           return;
@@ -1082,22 +1098,90 @@
         }
 
         submitBtn.disabled = true;
-        statusBox.textContent = 'Verifying cryptographic passkey...';
+        statusBox.textContent = 'Authenticating…';
         statusBox.classList.add('show');
 
-        setTimeout(() => {
-          const session = {
-            role: active,
-            identifier: ident,
-            authenticated_at: new Date().toISOString(),
-            session_id: Array.from(crypto.getRandomValues(new Uint8Array(6)))
-                          .map(b => b.toString(16).padStart(2,'0')).join(''),
-          };
-          const store = rememberCk.checked ? localStorage : sessionStorage;
-          store.setItem('proofchain_session', JSON.stringify(session));
-          statusBox.textContent = 'Authenticated. Redirecting...';
-          setTimeout(() => { window.location.href = cfg.target; }, 300);
-        }, 220);
+        try {
+          // Attempt real authentication against FastAPI backend if reachable
+          const fd = new FormData();
+          fd.append('username', ident);
+          fd.append('password', pw);
+
+          const res = await fetch((API || '') + '/api/auth/login', {
+            method: 'POST',
+            body: fd,
+            credentials: 'include',   // send/receive cross-origin cookies
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            const session = {
+              role: data.user.role,
+              username: data.user.username,
+              display_name: data.user.display_name,
+              person: data.user.person,
+              token: data.token,
+              authenticated_at: new Date().toISOString(),
+              backend: 'live'
+            };
+            const store = rememberCk.checked ? localStorage : sessionStorage;
+            store.setItem('proofchain_session', JSON.stringify(session));
+            if (API) store.setItem('proofchain_api_url', API);
+
+            statusBox.textContent = 'Authenticated. Redirecting…';
+            const page = ROLE_PAGE[data.user.role] || ROLES[active].target;
+            setTimeout(() => { window.location.href = page; }, 300);
+            return;
+          } else if (res.status === 400 || res.status === 401) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.detail || 'Invalid username or passkey');
+          }
+        } catch (fetchErr) {
+          if (fetchErr.message === 'Invalid username or passkey') {
+            errorBox.textContent = fetchErr.message;
+            errorBox.classList.add('show');
+            statusBox.classList.remove('show');
+            submitBtn.disabled = false;
+            return;
+          }
+          // Network error or 404/500 -> backend unreachable or not yet deployed on Render
+          console.warn('Backend server unreachable, using offline demo session:', fetchErr);
+        }
+
+        // Demo fallback when backend is offline/sleeping
+        const DEMO_USERS = {
+          candidate: { role: 'candidate', display: 'Aarav Kulkarni (Candidate)', person: 'Aarav Kulkarni' },
+          meera:     { role: 'candidate', display: 'Meera Joshi (Candidate)', person: 'Meera Joshi' },
+          atharva:   { role: 'registrar', display: 'Chief Registrar Atharva', person: 'Atharva' },
+          registrar: { role: 'registrar', display: 'Officer Aarav (Registrar)', person: 'Registrar' },
+          admin:     { role: 'admin',     display: 'System Administrator', person: 'Admin' },
+          verifier:  { role: 'verifier',  display: 'TechCorp HR (Verifier)', person: 'TechCorp HR' },
+          recruiter: { role: 'verifier',  display: 'Orbit Recruiters (Verifier)', person: 'Orbit Recruiters' },
+          auditor:   { role: 'auditor',   display: 'Inspector Maya (Auditor)', person: 'Auditor' }
+        };
+
+        const uKey = ident.toLowerCase();
+        const demoUser = DEMO_USERS[uKey] || {
+          role: active,
+          display: ident,
+          person: ident
+        };
+
+        const session = {
+          role: demoUser.role,
+          username: ident,
+          display_name: demoUser.display,
+          person: demoUser.person,
+          token: 'demo-local-token-' + Date.now(),
+          authenticated_at: new Date().toISOString(),
+          backend: 'demo-offline'
+        };
+        const store = rememberCk.checked ? localStorage : sessionStorage;
+        store.setItem('proofchain_session', JSON.stringify(session));
+
+        statusBox.textContent = 'Authenticated (Demo Session). Redirecting…';
+        const page = ROLE_PAGE[demoUser.role] || ROLES[active].target;
+        setTimeout(() => { window.location.href = page; }, 300);
       });
 
       applyRole('holder');
