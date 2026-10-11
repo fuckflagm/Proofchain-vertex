@@ -1,39 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "services": {
-    "app": {
-      "root": ".",
-      "framework": "vite"
-    },
-    "proofchain": {
-      "root": "proofchain2/proofchain",
-      "framework": "fastapi"
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": {
-        "service": "proofchain"
-      }
-    },
-    {
-      "source": "/login",
-      "destination": {
-        "service": "proofchain"
-      }
-    },
-    {
-      "source": "/verify",
-      "destination": {
-        "service": "proofchain"
-      }
-    },
-    {
-      "source": "/(.*)",
-      "destination": {
-        "service": "app"
-      }
-    }
-  ]
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "cleanUrls": true
 }

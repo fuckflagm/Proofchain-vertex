@@ -2,21 +2,12 @@ services:
   - type: web
     name: proofchain-api
     runtime: python
+    plan: free
     rootDir: proofchain2/proofchain
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
-    disk:
-      name: proofchain-data
-      mountPath: /data
-      sizeGB: 1
     envVars:
-      - key: PROOFCHAIN_DATA
-        value: /data/data
-      - key: PROOFCHAIN_PUBLISHED
-        value: /data/published
-      - key: PROOFCHAIN_MIRROR
-        value: /data/mirror
+      - key: PYTHON_VERSION
+        value: 3.11.9
       - key: ALLOWED_ORIGINS
-        # Set this to your Vercel frontend URL after deploying, e.g.:
-        # https://proofchain-vertex.vercel.app
-        sync: false
+        value: "*"

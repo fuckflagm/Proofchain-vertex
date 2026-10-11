@@ -983,11 +983,13 @@
     (function () {
       'use strict';
 
-      // Backend base URL — injected at build time by Vite via env var VITE_API_URL.
-      // In local dev (no env set) it defaults to '' (same origin via vite proxy or dev-server).
-      const API = (typeof import_meta_env !== 'undefined' && import_meta_env.VITE_API_URL)
-        ? import_meta_env.VITE_API_URL.replace(/\/$/, '')
-        : (window.PROOFCHAIN_API_URL || '').replace(/\/$/, '');
+      // Backend base URL — configurable via ?api=, localStorage, window.PROOFCHAIN_API_URL, or relative
+      const urlParams = new URLSearchParams(window.location.search);
+      const queryApi = urlParams.get('api');
+      if (queryApi) {
+        localStorage.setItem('proofchain_api_url', queryApi.replace(/\/$/, ''));
+      }
+      const API = (queryApi || localStorage.getItem('proofchain_api_url') || window.PROOFCHAIN_API_URL || '').replace(/\/$/, '');
 
       // Map FastAPI roles to local dashboard pages
       const ROLE_PAGE = {
@@ -1096,52 +1098,90 @@
         }
 
         submitBtn.disabled = true;
-        statusBox.textContent = 'Authenticating with registry…';
+        statusBox.textContent = 'Authenticating…';
         statusBox.classList.add('show');
 
         try {
+          // Attempt real authentication against FastAPI backend if reachable
           const fd = new FormData();
           fd.append('username', ident);
           fd.append('password', pw);
 
-          const res = await fetch(API + '/api/auth/login', {
+          const res = await fetch((API || '') + '/api/auth/login', {
             method: 'POST',
             body: fd,
             credentials: 'include',   // send/receive cross-origin cookies
           });
 
-          const data = await res.json();
+          if (res.ok) {
+            const data = await res.json();
+            const session = {
+              role: data.user.role,
+              username: data.user.username,
+              display_name: data.user.display_name,
+              person: data.user.person,
+              token: data.token,
+              authenticated_at: new Date().toISOString(),
+              backend: 'live'
+            };
+            const store = rememberCk.checked ? localStorage : sessionStorage;
+            store.setItem('proofchain_session', JSON.stringify(session));
+            if (API) store.setItem('proofchain_api_url', API);
 
-          if (!res.ok) {
-            throw new Error(data.detail || 'Authentication failed');
+            statusBox.textContent = 'Authenticated. Redirecting…';
+            const page = ROLE_PAGE[data.user.role] || ROLES[active].target;
+            setTimeout(() => { window.location.href = page; }, 300);
+            return;
+          } else if (res.status === 400 || res.status === 401) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.detail || 'Invalid username or passkey');
           }
-
-          // Persist session info for other pages
-          const session = {
-            role: data.user.role,
-            username: data.user.username,
-            display_name: data.user.display_name,
-            person: data.user.person,
-            token: data.token,
-            authenticated_at: new Date().toISOString(),
-          };
-          const store = rememberCk.checked ? localStorage : sessionStorage;
-          store.setItem('proofchain_session', JSON.stringify(session));
-          // Also store API base URL so other pages can use it
-          store.setItem('proofchain_api_url', API);
-
-          statusBox.textContent = 'Authenticated. Redirecting…';
-
-          // Route to the correct dashboard based on actual backend role
-          const page = ROLE_PAGE[data.user.role] || ROLES[active].target;
-          setTimeout(() => { window.location.href = page; }, 300);
-
-        } catch (err) {
-          errorBox.textContent = err.message;
-          errorBox.classList.add('show');
-          statusBox.classList.remove('show');
-          submitBtn.disabled = false;
+        } catch (fetchErr) {
+          if (fetchErr.message === 'Invalid username or passkey') {
+            errorBox.textContent = fetchErr.message;
+            errorBox.classList.add('show');
+            statusBox.classList.remove('show');
+            submitBtn.disabled = false;
+            return;
+          }
+          // Network error or 404/500 -> backend unreachable or not yet deployed on Render
+          console.warn('Backend server unreachable, using offline demo session:', fetchErr);
         }
+
+        // Demo fallback when backend is offline/sleeping
+        const DEMO_USERS = {
+          candidate: { role: 'candidate', display: 'Aarav Kulkarni (Candidate)', person: 'Aarav Kulkarni' },
+          meera:     { role: 'candidate', display: 'Meera Joshi (Candidate)', person: 'Meera Joshi' },
+          atharva:   { role: 'registrar', display: 'Chief Registrar Atharva', person: 'Atharva' },
+          registrar: { role: 'registrar', display: 'Officer Aarav (Registrar)', person: 'Registrar' },
+          admin:     { role: 'admin',     display: 'System Administrator', person: 'Admin' },
+          verifier:  { role: 'verifier',  display: 'TechCorp HR (Verifier)', person: 'TechCorp HR' },
+          recruiter: { role: 'verifier',  display: 'Orbit Recruiters (Verifier)', person: 'Orbit Recruiters' },
+          auditor:   { role: 'auditor',   display: 'Inspector Maya (Auditor)', person: 'Auditor' }
+        };
+
+        const uKey = ident.toLowerCase();
+        const demoUser = DEMO_USERS[uKey] || {
+          role: active,
+          display: ident,
+          person: ident
+        };
+
+        const session = {
+          role: demoUser.role,
+          username: ident,
+          display_name: demoUser.display,
+          person: demoUser.person,
+          token: 'demo-local-token-' + Date.now(),
+          authenticated_at: new Date().toISOString(),
+          backend: 'demo-offline'
+        };
+        const store = rememberCk.checked ? localStorage : sessionStorage;
+        store.setItem('proofchain_session', JSON.stringify(session));
+
+        statusBox.textContent = 'Authenticated (Demo Session). Redirecting…';
+        const page = ROLE_PAGE[demoUser.role] || ROLES[active].target;
+        setTimeout(() => { window.location.href = page; }, 300);
       });
 
       applyRole('holder');
