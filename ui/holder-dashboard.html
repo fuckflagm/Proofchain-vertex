@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="ProofChain — My Records dashboard for document holders.">
+  <title>My Records — ProofChain</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* ── Layout ── */
+    .dashboard-layout {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 24px;
+      align-items: start;
+    }
+    @media (max-width: 800px) {
+      .dashboard-layout { grid-template-columns: 1fr; }
+    }
+
+    /* ── Cert grid ── */
+    .cert-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px;
+    }
+    .cert-card {
+      border: 1.5px solid var(--indigo-accent);
+      background: var(--vanilla-bright);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .cert-type {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--indigo-muted);
+      background: var(--vanilla-tint);
+      padding: 2px 7px;
+      width: fit-content;
+    }
+    .cert-name {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--indigo-primary);
+      line-height: 1.3;
+    }
+    .cert-meta {
+      font-size: 0.7rem;
+      color: var(--indigo-muted);
+      font-family: var(--font-mono);
+    }
+    .cert-hash {
+      font-size: 0.6rem;
+      font-family: var(--font-mono);
+      color: var(--vanilla-dark);
+      word-break: break-all;
+      border-top: 1px solid var(--vanilla-border);
+      padding-top: 8px;
+      margin-top: 2px;
+    }
+    .cert-status {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      width: fit-content;
+    }
+    .cert-status.verified { background: var(--indigo-primary); color: var(--vanilla-bright); }
+    .cert-status.pending  { background: var(--vanilla-border); color: var(--indigo-primary); }
+
+    /* ── Mailbox ── */
+    .mailbox-panel {
+      border: 2px solid var(--indigo-accent);
+      background: var(--vanilla-bright);
+      overflow: hidden;
+    }
+    .mailbox-header {
+      background: var(--indigo-primary);
+      padding: 13px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .mailbox-title {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--vanilla-bright);
+    }
+    .mailbox-count {
+      background: var(--vanilla-bright);
+      color: var(--indigo-primary);
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      min-width: 22px;
+      text-align: center;
+    }
+    .mailbox-empty {
+      padding: 28px 16px;
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--indigo-muted);
+      font-family: var(--font-mono);
+    }
+    .request-item {
+      border-bottom: 1px solid var(--vanilla-tint);
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+    .request-item:last-child { border-bottom: none; }
+    .req-from {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--indigo-primary);
+    }
+    .req-doc {
+      font-size: 0.7rem;
+      color: var(--indigo-muted);
+      font-family: var(--font-mono);
+    }
+    .req-time {
+      font-size: 0.6rem;
+      color: var(--vanilla-dark);
+      font-family: var(--font-mono);
+    }
+    .req-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 2px;
+    }
+    .btn-accept, .btn-deny {
+      flex: 1;
+      padding: 6px 4px;
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      border: 1.5px solid;
+      cursor: pointer;
+      transition: background 120ms ease;
+    }
+    .btn-accept {
+      background: var(--indigo-primary);
+      color: var(--vanilla-bright);
+      border-color: var(--indigo-primary);
+    }
+    .btn-accept:hover { background: var(--indigo-elevated); border-color: var(--indigo-elevated); }
+    .btn-deny {
+      background: transparent;
+      color: var(--indigo-accent);
+      border-color: var(--indigo-accent);
+    }
+    .btn-deny:hover { background: var(--vanilla-tint); }
+    .req-resolved {
+      font-family: var(--font-mono);
+      font-size: 0.63rem;
+      color: var(--indigo-muted);
+      font-style: italic;
+    }
+
+    /* ── Nav logout ── */
+    .nav-logout {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.8px;
+      color: var(--vanilla-dark);
+      background: none;
+      border: 1px solid var(--indigo-muted);
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: border-color 120ms, color 120ms;
+    }
+    .nav-logout:hover { border-color: var(--vanilla-bright); color: var(--vanilla-bright); }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="top-nav" style="display: flex; align-items: center; justify-content: space-between; padding: 0 24px; background: var(--indigo-deep); border-bottom: 2px solid var(--indigo-accent); height: 58px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <a href="holder-dashboard.html" class="nav-logo" style="font-family: var(--font-mono); font-weight: 800; letter-spacing: 2px; color: var(--vanilla-bright); text-decoration: none; font-size: 1.05rem;">PROOFCHAIN</a>
+        <span style="font-family: var(--font-mono); font-size: 0.6rem; text-transform: uppercase; background: var(--indigo-muted); color: var(--vanilla-bright); padding: 2px 7px; border-radius: 2px; font-weight: 700;">HOLDER</span>
+      </div>
+      <ul class="nav-links" style="display: flex; align-items: center; gap: 20px; list-style: none; margin: 0; padding: 0;">
+        <li><a href="holder-dashboard.html" class="active" style="color: var(--vanilla-bright); text-decoration: none; font-size: 0.82rem; font-weight: 700; border-bottom: 2px solid var(--vanilla-bright); padding-bottom: 3px;">My Records</a></li>
+        <li><a href="verify.html" style="color: var(--vanilla-border); text-decoration: none; font-size: 0.82rem; font-weight: 500;">Verify</a></li>
+        <li><a href="audit.html" style="color: var(--vanilla-border); text-decoration: none; font-size: 0.82rem; font-weight: 500;">Audit</a></li>
+        <li><a href="batches.html" style="color: var(--vanilla-border); text-decoration: none; font-size: 0.82rem; font-weight: 500;">Batches</a></li>
+      </ul>
+      <div class="nav-right">
+        <span id="userBadge" class="nav-user">alex@proofchain.org</span>
+        <a href="login.html" id="logoutBtn" class="nav-logout" onclick="sessionStorage.removeItem('proofchain_session'); localStorage.removeItem('proofchain_session');" title="Logout">Logout</a>
+      </div>
+    </nav>
+
+    <main class="main-content">
+      <h1 class="page-title">My Records</h1>
+      <p class="page-subtitle">Your cryptographically attested documents. When a verifier requests access, you will receive a notification in the mailbox.</p>
+
+      <div class="dashboard-layout">
+
+        <!-- Certificate Grid -->
+        <div>
+          <p class="section-label">Verified Documents</p>
+          <div class="cert-grid" id="certGrid">
+            <div class="cert-card">
+              <span class="cert-type">Academic</span>
+              <div class="cert-name">B.Tech Computer Science</div>
+              <div class="cert-meta">State Technical University · 2024-05-15</div>
+              <div class="cert-hash" style="overflow-wrap: break-word; font-size: 0.62rem;">a3f8c1d2e5b7490f821c437a098d6e3c129487b1c4e2098d7f6a5b4c3d2e1f0a</div>
+              <span class="cert-status verified">verified</span>
+            </div>
+            <div class="cert-card">
+              <span class="cert-type">Professional</span>
+              <div class="cert-name">AWS Certified Solutions Architect</div>
+              <div class="cert-meta">Amazon Web Services · 2024-09-01</div>
+              <div class="cert-hash" style="overflow-wrap: break-word; font-size: 0.62rem;">b7d2f091c891437890123efab091823749018237490182374901823749018237</div>
+              <span class="cert-status verified">verified</span>
+            </div>
+            <div class="cert-card">
+              <span class="cert-type">Academic</span>
+              <div class="cert-name">Secondary School Certificate</div>
+              <div class="cert-meta">CBSE Board · 2020-07-10</div>
+              <div class="cert-hash" style="overflow-wrap: break-word; font-size: 0.62rem;">e1029abc7ff40123984712039847102938471029384710293847102938471029</div>
+              <span class="cert-status verified">verified</span>
+            </div>
+            <div class="cert-card">
+              <span class="cert-type">Identity</span>
+              <div class="cert-name">National ID Attestation</div>
+              <div class="cert-meta">Government Registry · 2023-01-20</div>
+              <div class="cert-hash" style="overflow-wrap: break-word; font-size: 0.62rem;">Pending authority issuance...</div>
+              <span class="cert-status pending">pending</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mailbox -->
+        <div>
+          <div class="mailbox-panel">
+            <div class="mailbox-header">
+              <span class="mailbox-title">Access Requests</span>
+              <span class="mailbox-count" id="mailCount">0</span>
+            </div>
+            <div id="mailboxList">
+              <div class="mailbox-empty" id="mailboxEmpty">No pending requests</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { getAccessRequests, updateRequestStatus } from './js/mailbox-service.js';
+
+    // Retrieve active session identifier if present
+    try {
+      const raw = sessionStorage.getItem('proofchain_session') || localStorage.getItem('proofchain_session');
+      if (raw) {
+        const sess = JSON.parse(raw);
+        if (sess && sess.identifier) {
+          const badge = document.getElementById('userBadge');
+          if (badge) badge.textContent = sess.identifier;
+        }
+      }
+    } catch(e) {}
+
+    /* ── Demo Certificates ── */
+    const certs = [
+      { type: 'Academic', name: 'B.Tech Computer Science', issuer: 'State Technical University', date: '2024-05-15', status: 'verified', hash: 'a3f8c1d2e5b7490f821c437a098d6e3c129487b1c4e2098d7f6a5b4c3d2e1f0a' },
+      { type: 'Professional', name: 'AWS Certified Solutions Architect', issuer: 'Amazon Web Services', date: '2024-09-01', status: 'verified', hash: 'b7d2f091c891437890123efab091823749018237490182374901823749018237' },
+      { type: 'Academic', name: 'Secondary School Certificate', issuer: 'CBSE Board', date: '2020-07-10', status: 'verified', hash: 'e1029abc7ff40123984712039847102938471029384710293847102938471029' },
+      { type: 'Identity', name: 'National ID Attestation', issuer: 'Government Registry', date: '2023-01-20', status: 'pending',  hash: 'Pending authority issuance...' },
+    ];
+
+    const certGrid = document.getElementById('certGrid');
+    certs.forEach(c => {
+      const el = document.createElement('div');
+      el.className = 'cert-card';
+      el.innerHTML = `
+        <span class="cert-type">${c.type}</span>
+        <div class="cert-name">${c.name}</div>
+        <div class="cert-meta">${c.issuer} · ${c.date}</div>
+        <div class="cert-hash" style="overflow-wrap: break-word; font-size: 0.62rem;">${c.hash}</div>
+        <span class="cert-status ${c.status}">${c.status}</span>
+      `;
+      certGrid.appendChild(el);
+    });
+
+    /* ── Access Requests (mailbox) ── */
+    function renderMailbox() {
+      const allRequests = getAccessRequests();
+      // Show requests for holder
+      const requests = allRequests.filter(r => !r.targetRole || r.targetRole === 'holder');
+      const list  = document.getElementById('mailboxList');
+      const empty = document.getElementById('mailboxEmpty');
+      const count = document.getElementById('mailCount');
+      const pending = requests.filter(r => r.status === 'pending');
+
+      count.textContent = pending.length;
+      list.innerHTML = '';
+
+      if (requests.length === 0) {
+        list.appendChild(empty);
+        return;
+      }
+
+      requests.forEach((req) => {
+        const el = document.createElement('div');
+        el.className = 'request-item';
+        const t = new Date(req.time);
+        const timeStr = t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        if (req.status === 'pending') {
+          el.innerHTML = `
+            <div class="req-from">${req.from}</div>
+            <div class="req-doc">Requesting: <strong>${req.doc}</strong></div>
+            <div class="req-doc" style="font-size: 0.65rem; color: var(--indigo-muted);">Purpose: ${req.purpose || 'Verification audit'}</div>
+            <div class="req-time">${timeStr}</div>
+            <div class="req-actions">
+              <button class="btn-accept" data-id="${req.id}">Allow</button>
+              <button class="btn-deny"   data-id="${req.id}">Deny</button>
+            </div>
+          `;
+        } else {
+          el.innerHTML = `
+            <div class="req-from">${req.from}</div>
+            <div class="req-doc"><strong>${req.doc}</strong></div>
+            <div class="req-time">${timeStr}</div>
+            <div class="req-resolved" style="font-weight: 600; color: ${req.status === 'accepted' ? 'var(--indigo-primary)' : 'var(--indigo-accent)'};">
+              ${req.status === 'accepted' ? '✓ Access Granted (Hashes unlocked for verifier)' : '✕ Access Denied'}
+            </div>
+          `;
+        }
+        list.appendChild(el);
+      });
+
+      list.querySelectorAll('.btn-accept').forEach(btn => {
+        btn.addEventListener('click', () => {
+          updateRequestStatus(btn.dataset.id, 'accepted');
+          renderMailbox();
+        });
+      });
+      list.querySelectorAll('.btn-deny').forEach(btn => {
+        btn.addEventListener('click', () => {
+          updateRequestStatus(btn.dataset.id, 'denied');
+          renderMailbox();
+        });
+      });
+    }
+
+    renderMailbox();
+    // Poll for real-time changes
+    window.addEventListener('storage', renderMailbox);
+  </script>
+</body>
+</html>

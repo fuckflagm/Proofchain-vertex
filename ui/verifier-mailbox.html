@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="ProofChain — Verifier request portal to request document access from holders.">
+  <title>Request Access — ProofChain</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .request-form-card { max-width: 560px; }
+
+    .status-log {
+      margin-top: 24px;
+      border: 1.5px solid var(--indigo-accent);
+      background: var(--vanilla-bright);
+      overflow: hidden;
+    }
+    .status-log-header {
+      background: var(--indigo-primary);
+      padding: 10px 16px;
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--vanilla-bright);
+    }
+    .log-item {
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--vanilla-tint);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .log-item:last-child { border-bottom: none; }
+    .log-doc { font-size: 0.82rem; font-weight: 600; color: var(--indigo-primary); }
+    .log-target { font-size: 0.7rem; color: var(--indigo-muted); font-family: var(--font-mono); }
+    .log-status {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      width: fit-content;
+    }
+    .log-status.pending  { background: var(--vanilla-border); color: var(--indigo-primary); }
+    .log-status.accepted { background: var(--indigo-primary); color: var(--vanilla-bright); }
+    .log-status.denied   { background: var(--indigo-accent); color: var(--vanilla-bright); }
+    .log-time { font-size: 0.6rem; color: var(--vanilla-dark); font-family: var(--font-mono); }
+
+    .nav-logout {
+      font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.8px;
+      color: var(--vanilla-dark); background: none; border: 1px solid var(--indigo-muted);
+      padding: 4px 10px; cursor: pointer; transition: border-color 120ms, color 120ms;
+    }
+    .nav-logout:hover { border-color: var(--vanilla-bright); color: var(--vanilla-bright); }
+  </style>
+</head>
+<body>
+    <nav class="top-nav" style="display: flex; align-items: center; justify-content: space-between; padding: 0 24px; background: var(--indigo-deep); border-bottom: 2px solid var(--indigo-accent); height: 58px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <a href="verifier-mailbox.html" class="nav-logo" style="font-family: var(--font-mono); font-weight: 800; letter-spacing: 2px; color: var(--vanilla-bright); text-decoration: none; font-size: 1.05rem;">PROOFCHAIN</a>
+        <span style="font-family: var(--font-mono); font-size: 0.6rem; text-transform: uppercase; background: var(--indigo-muted); color: var(--vanilla-bright); padding: 2px 7px; border-radius: 2px; font-weight: 700;">VERIFIER</span>
+      </div>
+      <ul class="nav-links" style="display: flex; align-items: center; gap: 20px; list-style: none; margin: 0; padding: 0;">
+        <li><a href="verifier-mailbox.html" class="active" style="color: var(--vanilla-bright); text-decoration: none; font-size: 0.82rem; font-weight: 700; border-bottom: 2px solid var(--vanilla-bright); padding-bottom: 3px;">Mailbox</a></li>
+        <li><a href="verify.html" style="color: var(--vanilla-border); text-decoration: none; font-size: 0.82rem; font-weight: 500;">Verify</a></li>
+        <li><a href="audit.html" style="color: var(--vanilla-border); text-decoration: none; font-size: 0.82rem; font-weight: 500;">Audit</a></li>
+        <li><a href="batches.html" style="color: var(--vanilla-border); text-decoration: none; font-size: 0.82rem; font-weight: 500;">Batches</a></li>
+      </ul>
+      <div class="nav-right">
+        <span id="userBadge" class="nav-user">auditor@recruiter.com</span>
+        <a href="login.html" id="logoutBtn" class="nav-logout" onclick="sessionStorage.removeItem('proofchain_session'); localStorage.removeItem('proofchain_session');" title="Logout">Logout</a>
+      </div>
+    </nav>
+
+    <main class="main-content">
+      <h1 class="page-title">Request Document Access</h1>
+      <p class="page-subtitle">Send an access request to a document holder. The holder will receive a notification and must approve before you can verify the document.</p>
+
+      <div class="card request-form-card">
+        <div class="card-header">
+          <h2>New Access Request</h2>
+        </div>
+
+        <div class="info-banner">
+          Access requests require explicit approval. Cryptographic fingerprints and proof bundles will only become accessible once the holder or author allows access.
+        </div>
+
+        <form id="requestForm" novalidate style="padding: 0;">
+          <div style="padding: 20px 20px 0;">
+            <div class="form-group">
+              <label class="form-label" for="targetRoleSelect">Request Recipient Role</label>
+              <select class="form-select" id="targetRoleSelect" style="width: 100%;">
+                <option value="holder">Document Holder (Student / Citizen / Record Owner)</option>
+                <option value="issuer">Document Author / Issuer (Registrar / University Operator)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="holderIdInput">Recipient Email or Account ID</label>
+              <input type="text" class="form-input" id="holderIdInput"
+                     placeholder="alex@proofchain.org or operator@proofchain.org" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="docRefInput">Document Name / Reference</label>
+              <input type="text" class="form-input" id="docRefInput"
+                     placeholder="e.g. B.Tech Computer Science Degree" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="purposeInput">Purpose of Verification</label>
+              <textarea class="form-textarea" id="purposeInput" rows="2"
+                        placeholder="e.g. Employment background audit for Technical Staff position"></textarea>
+            </div>
+          </div>
+          <div style="padding: 0 20px 20px; display: flex; gap: 10px; align-items: center;">
+            <button type="submit" class="btn" id="sendBtn">Send Request</button>
+            <span id="sendStatus" class="mono" style="font-size: 0.72rem; color: var(--color-secondary);"></span>
+          </div>
+        </form>
+      </div>
+
+      <!-- Request log -->
+      <div class="status-log" id="statusLog" style="display:none; margin-top: 24px;">
+        <div class="status-log-header">Verification Requests &amp; Access Log</div>
+        <div id="logList"></div>
+      </div>
+
+    </main>
+  </div>
+
+  <script type="module" src="js/state.js"></script>
+  <script type="module">
+    import { getAccessRequests, addAccessRequest } from './js/mailbox-service.js';
+
+    let session = { identifier: 'auditor@recruiter.com' };
+    try {
+      const raw = sessionStorage.getItem('proofchain_session') || localStorage.getItem('proofchain_session');
+      if (raw) {
+        const s = JSON.parse(raw);
+        if (s) session = s;
+        const badge = document.getElementById('userBadge');
+        if (badge && session.identifier) badge.textContent = session.identifier;
+      }
+    } catch(e) {}
+
+    function renderLog() {
+      const requests = getAccessRequests();
+      const log      = document.getElementById('statusLog');
+      const logList  = document.getElementById('logList');
+      if (!requests.length) { log.style.display = 'none'; return; }
+      log.style.display = 'block';
+      logList.innerHTML = '';
+
+      requests.forEach(r => {
+        const el = document.createElement('div');
+        el.className = 'log-item';
+        const t = new Date(r.time).toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+        
+        const isAccepted = r.status === 'accepted';
+        const isPending  = r.status === 'pending';
+
+        el.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+            <div>
+              <div class="log-doc">${r.doc || 'Attested Document'}</div>
+              <div class="log-target">To: <strong>${r.targetRecipient || r.holder || 'Holder'}</strong> (${r.targetRole === 'issuer' ? 'Author/Issuer' : 'Holder'})</div>
+              <div style="font-size: 0.68rem; color: var(--indigo-muted); margin-top: 2px;">Purpose: ${r.purpose || 'Verification check'}</div>
+            </div>
+            <span class="log-status ${r.status}">${r.status === 'accepted' ? 'Access Granted' : r.status === 'pending' ? 'Pending Approval' : 'Access Denied'}</span>
+          </div>
+          <div class="log-time">${t}</div>
+
+          ${isAccepted ? `
+            <div style="margin-top: 10px; padding: 10px 12px; background: var(--vanilla-tint); border: 1.5px solid var(--indigo-primary);">
+              <div style="font-size: 0.65rem; font-family: var(--font-mono); font-weight: 700; color: var(--indigo-primary); letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 4px;">
+                ✓ Unlocked Cryptographic Access
+              </div>
+              <div style="font-family: var(--font-mono); font-size: 0.65rem; color: var(--indigo-deep); word-break: break-all; margin-bottom: 8px;">
+                <strong>Document Fingerprint:</strong> ${r.docHash || 'a3f8c1d2e5b7490f821c437a098d6e3c129487b1c4e2098d7f6a5b4c3d2e1f0a'}<br>
+                <strong>Merkle Batch Root:</strong> ${r.merkleRoot || '6f8d3c1a2e4b509f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f'}
+              </div>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button class="btn btn-sm btn-verify-now" data-id="${r.id}">Open in Standalone Verifier</button>
+                <button class="btn btn-sm btn-outline btn-copy-hash" data-hash="${r.docHash || ''}">Copy Fingerprint</button>
+              </div>
+            </div>
+          ` : isPending ? `
+            <div style="margin-top: 6px; font-size: 0.68rem; font-family: var(--font-mono); color: var(--indigo-muted); font-style: italic;">
+              🔒 Locked — Awaiting approval from ${r.targetRole === 'issuer' ? 'author' : 'holder'}. Cryptographic hashes will be revealed once approved.
+            </div>
+          ` : `
+            <div style="margin-top: 6px; font-size: 0.68rem; font-family: var(--font-mono); color: var(--indigo-accent); font-style: italic;">
+              ✕ Restricted — The ${r.targetRole === 'issuer' ? 'author' : 'holder'} declined access.
+            </div>
+          `}
+        `;
+        logList.appendChild(el);
+      });
+
+      // Bind verify-now buttons
+      logList.querySelectorAll('.btn-verify-now').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.id;
+          const req = requests.find(r => r.id === id);
+          if (req && window.ProofChainStore) {
+            window.ProofChainStore.setPendingVerification({
+              documentText: req.docText || `${req.doc}\nFingerprint: ${req.docHash}`,
+              proofBundle: {
+                version: "proofchain/v1",
+                document_fingerprint: req.docHash,
+                canonicalization_scheme: "proofchain/v1/file",
+                batch_id: "2026-10-B0001",
+                leaf_index: 0,
+                path: ["8754425983b1a23666d35793fa9bc82d8c3add4d733703cac76150d6a6066a7b"],
+                published_root: req.merkleRoot
+              },
+              publishedRoot: req.merkleRoot
+            });
+            window.location.href = 'verify.html';
+          }
+        });
+      });
+
+      // Bind copy buttons
+      logList.querySelectorAll('.btn-copy-hash').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const hash = btn.dataset.hash;
+          if (hash) {
+            await navigator.clipboard.writeText(hash);
+            const orig = btn.textContent;
+            btn.textContent = 'Copied!';
+            setTimeout(() => { btn.textContent = orig; }, 1500);
+          }
+        });
+      });
+    }
+
+    document.getElementById('requestForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const targetRole = document.getElementById('targetRoleSelect').value;
+      const recipient  = document.getElementById('holderIdInput').value.trim();
+      const doc        = document.getElementById('docRefInput').value.trim();
+      const purpose    = document.getElementById('purposeInput').value.trim();
+      const status     = document.getElementById('sendStatus');
+
+      if (!recipient) { status.textContent = 'Recipient ID or email is required.'; return; }
+      if (!doc) { status.textContent = 'Document reference is required.'; return; }
+
+      const newReq = {
+        id: 'req_' + Date.now(),
+        from: (session.identifier || 'Verifier') + ' (Auditor)',
+        verifierId: session.identifier || 'verifier@proofchain.org',
+        targetRole,
+        targetRecipient: recipient,
+        doc,
+        docText: `DOCUMENT VERIFICATION INQUIRY\nDocument: ${doc}\nSubject: ${recipient}\nStatus: ATTESTED IN REGISTRY`,
+        docHash: Array.from(crypto.getRandomValues(new Uint8Array(32))).map(b => b.toString(16).padStart(2,'0')).join(''),
+        merkleRoot: '6f8d3c1a2e4b509f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f',
+        purpose: purpose || 'Standard background integrity verification',
+        time: new Date().toISOString(),
+        status: 'pending',
+      };
+
+      addAccessRequest(newReq);
+
+      status.textContent = `Request dispatched to ${targetRole}. Awaiting approval.`;
+      document.getElementById('requestForm').reset();
+      setTimeout(() => { status.textContent = ''; }, 3500);
+      renderLog();
+    });
+
+    renderLog();
+    window.addEventListener('storage', renderLog);
+  </script>
+</body>
+</html>

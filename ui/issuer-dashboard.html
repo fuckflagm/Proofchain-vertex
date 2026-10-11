@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="ProofChain — Issuer dashboard showing published and verified documents.">
+  <title>Issuer Dashboard — ProofChain</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* ── Stat cards ── */
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      border: 2px solid var(--indigo-accent);
+      background: var(--vanilla-bright);
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .stat-label {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--indigo-muted);
+    }
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--indigo-primary);
+      line-height: 1;
+    }
+    .stat-sub {
+      font-size: 0.68rem;
+      color: var(--indigo-muted);
+    }
+
+    /* ── Document table ── */
+    .doc-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+    }
+    .doc-table th {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--vanilla-bright);
+      background: var(--indigo-primary);
+      padding: 9px 14px;
+      text-align: left;
+      font-weight: 600;
+    }
+    .doc-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--vanilla-border);
+      color: var(--indigo-primary);
+      vertical-align: middle;
+    }
+    .doc-table tr:last-child td { border-bottom: none; }
+    .doc-table tr:hover td { background: var(--vanilla-tint); }
+    .tbl-badge {
+      font-family: var(--font-mono);
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 0.7px;
+      text-transform: uppercase;
+      padding: 2px 7px;
+    }
+    .tbl-badge.verified { background: var(--indigo-primary); color: var(--vanilla-bright); }
+    .tbl-badge.pending  { background: var(--vanilla-border); color: var(--indigo-primary); }
+    .tbl-badge.anchored { background: var(--indigo-muted);   color: var(--vanilla-bright); }
+
+    /* ── Mailbox ── */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 24px;
+      align-items: start;
+    }
+    @media (max-width: 800px) { .two-col { grid-template-columns: 1fr; } }
+
+    .mailbox-panel { border: 2px solid var(--indigo-accent); background: var(--vanilla-bright); overflow: hidden; }
+    .mailbox-header {
+      background: var(--indigo-primary);
+      padding: 12px 16px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .mailbox-title {
+      font-family: var(--font-mono); font-size: 0.67rem; font-weight: 700;
+      letter-spacing: 1.2px; text-transform: uppercase; color: var(--vanilla-bright);
+    }
+    .mailbox-count {
+      background: var(--vanilla-bright); color: var(--indigo-primary);
+      font-family: var(--font-mono); font-size: 0.6rem; font-weight: 700;
+      padding: 2px 7px; min-width: 22px; text-align: center;
+    }
+    .request-item {
+      border-bottom: 1px solid var(--vanilla-tint);
+      padding: 13px 16px; display: flex; flex-direction: column; gap: 5px;
+    }
+    .request-item:last-child { border-bottom: none; }
+    .req-from { font-size: 0.78rem; font-weight: 600; color: var(--indigo-primary); }
+    .req-doc  { font-size: 0.7rem; color: var(--indigo-muted); font-family: var(--font-mono); }
+    .req-time { font-size: 0.6rem; color: var(--vanilla-dark); font-family: var(--font-mono); }
+    .req-actions { display: flex; gap: 8px; margin-top: 4px; }
+    .btn-accept, .btn-deny {
+      flex: 1; padding: 6px 4px;
+      font-family: var(--font-mono); font-size: 0.6rem; font-weight: 700;
+      letter-spacing: 0.8px; text-transform: uppercase; border: 1.5px solid; cursor: pointer;
+      transition: background 120ms ease;
+    }
+    .btn-accept { background: var(--indigo-primary); color: var(--vanilla-bright); border-color: var(--indigo-primary); }
+    .btn-accept:hover { background: var(--indigo-elevated); border-color: var(--indigo-elevated); }
+    .btn-deny { background: transparent; color: var(--indigo-accent); border-color: var(--indigo-accent); }
+    .btn-deny:hover { background: var(--vanilla-tint); }
+    .req-resolved { font-family: var(--font-mono); font-size: 0.63rem; color: var(--indigo-muted); font-style: italic; }
+    .mailbox-empty { padding: 28px 16px; text-align: center; font-size: 0.75rem; color: var(--indigo-muted); font-family: var(--font-mono); }
+
+    /* ── Nav ── */
+    .nav-logout {
+      font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.8px;
+      color: var(--vanilla-dark); background: none; border: 1px solid var(--indigo-muted);
+      padding: 4px 10px; cursor: pointer; transition: border-color 120ms, color 120ms;
+    }
+    .nav-logout:hover { border-color: var(--vanilla-bright); color: var(--vanilla-bright); }
+  </style>
+</head>
+<body>
+    <nav class="top-nav" style="display: flex; align-items: center; justify-content: space-between; padding: 0 24px; background: var(--indigo-deep); border-bottom: 2px solid var(--indigo-accent); height: 58px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <a href="issuer-dashboard.html" class="nav-logo" style="font-family: var(--font-mono); font-weight: 800; letter-spacing: 2px; color: var(--vanilla-bright); text-decoration: none; font-size: 1.05rem;">PROOFCHAIN</a>
+        <span style="font-family: var(--font-mono); font-size: 0.6rem; text-transform: uppercase; background: var(--indigo-muted); color: var(--vanilla-bright); padding: 2px 7px; border-radius: 2px; font-weight: 700;">ISSUER</span>
+      </div>
+      <ul class="nav-links" style="display: flex; align-items: center; gap: 20px; list-style: none; margin: 0; padding: 0;">
+        <li><a href="issuer-dashboard.html" class="active" style="color: var(--vanilla-bright); text-decoration: none; font-size: 0.82rem; font-weight: 700; border-bottom: 2px solid var(--vanilla-bright); padding-bottom: 3px;">Dashboard</a></li>
+        <li><a href="register.html" style="color: var(--vanilla-border); text-decoration: none; font-size: 0.82rem; font-weight: 500;">Register</a></li>
+        <li><a href="batches.html" style="color: var(--vanilla-border); text-decoration: none; font-size: 0.82rem; font-weight: 500;">Batches</a></li>
+        <li><a href="verify.html" style="color: var(--vanilla-border); text-decoration: none; font-size: 0.82rem; font-weight: 500;">Verify</a></li>
+        <li><a href="audit.html" style="color: var(--vanilla-border); text-decoration: none; font-size: 0.82rem; font-weight: 500;">Audit</a></li>
+      </ul>
+      <div class="nav-right">
+        <span id="userBadge" class="nav-user">operator@proofchain.org</span>
+        <a href="login.html" id="logoutBtn" class="nav-logout" onclick="sessionStorage.removeItem('proofchain_session'); localStorage.removeItem('proofchain_session');" title="Logout">Logout</a>
+      </div>
+    </nav>
+
+    <main class="main-content">
+      <h1 class="page-title">Issuer Dashboard</h1>
+      <p class="page-subtitle">Overview of documents published, anchored in Merkle batches, and verified by external auditors.</p>
+
+      <!-- Stats -->
+      <div class="stat-row">
+        <div class="stat-card">
+          <span class="stat-label">Documents Published</span>
+          <span class="stat-value">24</span>
+          <span class="stat-sub">Total ingested documents</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Pending Batch</span>
+          <span class="stat-value">3</span>
+          <span class="stat-sub">Not yet anchored</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Verified by Auditors</span>
+          <span class="stat-value">18</span>
+          <span class="stat-sub">External verifications</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Active Batches</span>
+          <span class="stat-value">6</span>
+          <span class="stat-sub">Merkle checkpoints</span>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <!-- Document Table -->
+        <div>
+          <div class="card">
+            <div class="card-header">
+              <h2>Published Documents</h2>
+              <a href="register.html" class="btn btn-sm">Register New</a>
+            </div>
+            <div style="overflow-x: auto;">
+              <table class="doc-table">
+                <thead>
+                  <tr>
+                    <th>Document</th>
+                    <th>Holder</th>
+                    <th>Date</th>
+                    <th>Verifications</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="docTableBody">
+                  <!-- populated by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mailbox -->
+        <div>
+          <div class="mailbox-panel">
+            <div class="mailbox-header">
+              <span class="mailbox-title">Access Requests</span>
+              <span class="mailbox-count" id="mailCount">0</span>
+            </div>
+            <div id="mailboxList">
+              <div class="mailbox-empty">No pending requests</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script type="module">
+    import { getAccessRequests, updateRequestStatus } from './js/mailbox-service.js';
+
+    try {
+      const raw = sessionStorage.getItem('proofchain_session') || localStorage.getItem('proofchain_session');
+      if (raw) {
+        const sess = JSON.parse(raw);
+        if (sess && sess.identifier) {
+          const badge = document.getElementById('userBadge');
+          if (badge) badge.textContent = sess.identifier;
+        }
+      }
+    } catch(e) {}
+
+    /* ── Demo documents ── */
+    const docs = [
+      { name: 'B.Tech Degree — Ravi Kumar',    holder: 'ravi.kumar@stu.edu',  date: '2024-05-15', verifications: 3, status: 'verified' },
+      { name: 'MBA Certificate — Priya Singh',  holder: 'priya.s@mba.edu',    date: '2024-06-01', verifications: 1, status: 'verified' },
+      { name: 'Diploma — Aarav Mehta',          holder: 'aarav.m@poly.edu',   date: '2024-07-20', verifications: 0, status: 'anchored' },
+      { name: 'CBSE Grade 12 — Sara Nair',      holder: 'sara.n@cbse.in',     date: '2024-03-10', verifications: 5, status: 'verified' },
+      { name: 'Research Paper — Dr. Iyer',      holder: 'iyer@research.org',  date: '2024-08-15', verifications: 0, status: 'pending'  },
+      { name: 'Scholarship Letter — Anil Rao',  holder: 'anil.rao@gov.in',    date: '2024-09-02', verifications: 2, status: 'verified' },
+    ];
+
+    const tbody = document.getElementById('docTableBody');
+    docs.forEach(d => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${d.name}</td>
+        <td style="font-family:var(--font-mono);font-size:0.68rem;">${d.holder}</td>
+        <td style="font-family:var(--font-mono);font-size:0.68rem;">${d.date}</td>
+        <td style="text-align:center;">${d.verifications}</td>
+        <td><span class="tbl-badge ${d.status}">${d.status}</span></td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    /* ── Mailbox ── */
+    function renderMailbox() {
+      const allRequests = getAccessRequests();
+      const requests = allRequests.filter(r => r.targetRole === 'issuer');
+      const list   = document.getElementById('mailboxList');
+      const count  = document.getElementById('mailCount');
+      count.textContent = requests.filter(r => r.status === 'pending').length;
+      list.innerHTML = '';
+
+      if (!requests.length) {
+        list.innerHTML = '<div class="mailbox-empty">No pending requests</div>';
+        return;
+      }
+      requests.forEach((req) => {
+        const el = document.createElement('div');
+        el.className = 'request-item';
+        const t = new Date(req.time).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+        if (req.status === 'pending') {
+          el.innerHTML = `
+            <div class="req-from">${req.from}</div>
+            <div class="req-doc">Document: <strong>${req.doc}</strong></div>
+            <div class="req-doc" style="font-size: 0.65rem; color: var(--indigo-muted);">Purpose: ${req.purpose || 'Verification inquiry'}</div>
+            <div class="req-time">${t}</div>
+            <div class="req-actions">
+              <button class="btn-accept" data-id="${req.id}">Allow</button>
+              <button class="btn-deny"   data-id="${req.id}">Deny</button>
+            </div>
+          `;
+        } else {
+          el.innerHTML = `
+            <div class="req-from">${req.from}</div>
+            <div class="req-doc"><strong>${req.doc}</strong></div>
+            <div class="req-time">${t}</div>
+            <div class="req-resolved" style="font-weight:600; color:${req.status === 'accepted' ? 'var(--indigo-primary)' : 'var(--indigo-accent)'};">
+              ${req.status === 'accepted' ? '✓ Access granted' : '✕ Access denied'}
+            </div>
+          `;
+        }
+        list.appendChild(el);
+      });
+
+      list.querySelectorAll('.btn-accept').forEach(btn => {
+        btn.addEventListener('click', () => {
+          updateRequestStatus(btn.dataset.id, 'accepted');
+          renderMailbox();
+        });
+      });
+      list.querySelectorAll('.btn-deny').forEach(btn => {
+        btn.addEventListener('click', () => {
+          updateRequestStatus(btn.dataset.id, 'denied');
+          renderMailbox();
+        });
+      });
+    }
+
+    renderMailbox();
+    window.addEventListener('storage', renderMailbox);
+  </script>
+</body>
+</html>
